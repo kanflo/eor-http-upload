@@ -38,6 +38,7 @@
         "POST /%s HTTP/1.1\r\n" \
         "User-Agent: simpleupload v0.1\r\n" \
         "Host: localhost\r\n" \
+        "Referer: 127.0.0.1\r\n" \
         "Accept: */*\r\n" \
         "Expect: 100-continue\r\n" \
         "Content-Length: %u\r\n" \
@@ -46,12 +47,12 @@
 
 #define POST_DATA \
         "--foo\r\n" \
-        "Content-Disposition: form-data; name=\"fileupload\"; filename=\"%s\"\r\n" \
+        "Content-Disposition: form-data; name=\"file\"; filename=\"%s\"\r\n" \
         "Content-Type: application/octet-stream\r\n" \
         "\r\n"
 
 // Length of data with room for file name (excluding actual file contents)
-#define POST_DATA_LENGTH (strlen(POST_DATA) + 32)
+#define POST_DATA_LENGTH (strlen(POST_DATA))
 
 #define END_MARKER \
         "\r\n--foo--\r\n"
@@ -61,7 +62,7 @@
 //#define CONFIG_UPLOAD_DEBUG
 
 #ifdef CONFIG_UPLOAD_DEBUG
- #define ULDBG(x) (x)
+ #define ULDBG(x) x
 #else
  #define ULDBG(x)
 #endif // CONFIG_UPLOAD_DEBUG
@@ -74,6 +75,8 @@ bool upload_connect(char *host, uint16_t port)
 {
     bool success = false;
     struct addrinfo *res;
+    char sport[7];
+    snprintf(sport, sizeof(sport)-1, "%d", port);
 #if 1
     do {
         const struct addrinfo hints = {
@@ -82,7 +85,7 @@ bool upload_connect(char *host, uint16_t port)
         };
 
         ULDBG(printf("Running DNS lookup for %s...\n", host));
-        int err = getaddrinfo(host, "80", &hints, &res);
+        int err = getaddrinfo(host, sport, &hints, &res);
 
         if(err != 0 || res == NULL) {
             ULDBG(printf("DNS lookup failed err=%d res=%p\n", err, res));
@@ -157,9 +160,9 @@ bool upload_begin(char *url, char *file_name, uint32_t file_size)
     post_hdr_len = strlen(POST_HEADER) + strlen(url) + strlen(file_name) + 1 + 10;
     // 1 + 10: null terminator + content-length field
     char *header = (char*) malloc(post_hdr_len);
-    char *data = (char*) malloc(POST_DATA_LENGTH);
+    char *data = (char*) malloc(POST_DATA_LENGTH + strlen(file_name));
     if (header && data) {
-        snprintf(data, POST_DATA_LENGTH - 1, POST_DATA, file_name);
+        snprintf(data, POST_DATA_LENGTH + strlen(file_name), POST_DATA, file_name);
         post_length = strlen(data) + file_size + strlen(END_MARKER);
         snprintf(header, post_hdr_len - 1, POST_HEADER, url, post_length);
 
@@ -241,11 +244,13 @@ static uint32_t parse_http_status(char *response)
         s1 = s3+1;
         *s3 = 0;
         http_response = atoi(s2);
+#if 0
         if (http_response >= 100 && http_response <= 199) {
             // We don't care about "1xx Informational"
             // See https://en.wikipedia.org/wiki/List_of_HTTP_status_codes
             http_response = 0;
         }
+#endif
     } while(http_response == 0 && s1);
     return http_response;
 }
