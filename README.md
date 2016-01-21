@@ -6,8 +6,7 @@ This module adds support for uploading files using HTTP.
 
 ```
 cd esp-open-rtos/extras
-git clone https://github.com/kanflo/eor-http-upload.git
-mv eor-http-upload http-upload
+git clone https://github.com/kanflo/eor-http-upload.git http-upload
 ```
 
 Include the driver in your project makefile as any other extra component:
