@@ -104,7 +104,7 @@ bool upload_connect(char *host, uint16_t port)
         ULDBG(printf("... allocated socket\n"));
 
         if(connect(sockfd, res->ai_addr, res->ai_addrlen) != 0) {
-            close(sockfd);
+            lwip_close(sockfd);
             ULDBG(printf("... socket connect failed.\n"));
             break;
         }
@@ -166,9 +166,9 @@ bool upload_begin(char *url, char *file_name, uint32_t file_size)
         post_length = strlen(data) + file_size + strlen(END_MARKER);
         snprintf(header, post_hdr_len - 1, POST_HEADER, url, post_length);
 
-        n = write(sockfd, (void*) header, strlen(header));
+        n = lwip_write(sockfd, (void*) header, strlen(header));
         ULDBG(printf("Sent HTTP header, %d bytes\n", n));
-        n = write(sockfd, (void*) data, strlen(data));
+        n = lwip_write(sockfd, (void*) data, strlen(data));
         ULDBG(printf("Sent file upload header, %d bytes\n", n));
         (void) n; // Compiles complains if not ULDBG
 
@@ -181,7 +181,7 @@ bool upload_begin(char *url, char *file_name, uint32_t file_size)
 
 bool upload_data(void *data, uint32_t length)
 {
-    if (write(sockfd, data, length) < 0) {
+    if (lwip_write(sockfd, data, length) < 0) {
         ULDBG(printf("Error: socket write failed\n"));
         return false;
     }
@@ -194,12 +194,12 @@ uint32_t upload_finish(void)
     int n;
     uint32_t http_status = 0;
 
-    if (write(sockfd, (void*) END_MARKER, strlen(END_MARKER)) < 0) {
+    if (lwip_write(sockfd, (void*) END_MARKER, strlen(END_MARKER)) < 0) {
         ULDBG(printf("Error: socket write failed for end marker\n"));
         return false;
     }
 
-    while ( (n = read(sockfd, buffer, sizeof(buffer)-1)) > 0) {
+    while ( (n = lwip_read(sockfd, buffer, sizeof(buffer)-1)) > 0) {
         buffer[n] = 0;
         ULDBG(printf("%s", buffer));
         uint32_t temp = parse_http_status(buffer);
@@ -216,7 +216,7 @@ uint32_t upload_finish(void)
 void upload_close(void)
 {
     if (sockfd) {
-        close(sockfd);
+        lwip_close(sockfd);
         sockfd = 0;        
     }
 }
